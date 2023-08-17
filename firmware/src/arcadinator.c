@@ -1,10 +1,29 @@
 #include <stdlib.h>
+#include <stdint.h>
+
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/cm3/systick.h>
+
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/timer.h>
 #include <libopencm3/usb/usbd.h>
 #include <libopencm3/usb/hid.h>
+
+#include "nrf24l01.h"
+
+uint8_t rxAddress[NRF24L01_ADDR_WIDTH] = {0x32,0x4E,0x6F,0x64,0x65};
+uint8_t txAddress[NRF24L01_ADDR_WIDTH] = {0x11,0x22,0x33,0x44,0x55};
+
+typedef enum{
+    RX_MODE = 0,
+    TX_MODE = 1
+} xMode_t;
+
+uint8_t xMode = TX_MODE;
+extern uint8_t RX_BUF[];
+extern uint8_t TX_BUF[];
+
 
 #define PACKET_SIZE 14
 
@@ -211,87 +230,81 @@ static const char *usb_strings[] = {
 	"V1"
 };
 
-/* Buffer to be used for control requests. */
+// Buffer to be used for control requests.
 uint8_t usbd_control_buffer[128];
 
-static enum usbd_request_return_codes hid_control_request(usbd_device *dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
-			void (**complete)(usbd_device *, struct usb_setup_data *))
-{
+static enum usbd_request_return_codes hid_control_request(usbd_device *dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len, void (**complete)(usbd_device *, struct usb_setup_data *)){
 	(void)complete;
 	(void)dev;
 
-	if((req->bmRequestType != 0x81) ||
-	   (req->bRequest != USB_REQ_GET_DESCRIPTOR) ||
-	   (req->wValue != 0x2200))
-		return USBD_REQ_NOTSUPP;
+	if((req->bmRequestType != 0x81) || (req->bRequest != USB_REQ_GET_DESCRIPTOR) || (req->wValue != 0x2200)) return USBD_REQ_NOTSUPP;
 
-	/* Handle the HID report descriptor. */
+	// Handle the HID report descriptor.
 	*buf = (uint8_t *)hid_report_descriptor;
 	*len = sizeof(hid_report_descriptor);
 
 	return USBD_REQ_HANDLED;
 }
 
-static enum usbd_request_return_codes hid_control_request2(usbd_device *dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
-			void (**complete)(usbd_device *, struct usb_setup_data *))
-{
+static enum usbd_request_return_codes hid_control_request2(usbd_device *dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len, void (**complete)(usbd_device *, struct usb_setup_data *)){
 	(void)complete;
 	(void)dev;
 
-	if((req->bmRequestType != 0x82) ||
-	   (req->bRequest != USB_REQ_GET_DESCRIPTOR) ||
-	   (req->wValue != 0x2200))
-		return USBD_REQ_NOTSUPP;
+	if((req->bmRequestType != 0x82) || (req->bRequest != USB_REQ_GET_DESCRIPTOR) || (req->wValue != 0x2200)) return USBD_REQ_NOTSUPP;
 
-	/* Handle the HID report descriptor. */
+	// Handle the HID report descriptor
 	*buf = (uint8_t *)hid_report_descriptor2;
 	*len = sizeof(hid_report_descriptor2);
 
 	return USBD_REQ_HANDLED;
 }
 
-static void hid_set_config(usbd_device *dev, uint16_t wValue)
-{
+static void hid_set_config(usbd_device *dev, uint16_t wValue){
 	(void)wValue;
 	(void)dev;
 
 	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_INTERRUPT, 4, NULL);
     usbd_ep_setup(dev, 0x82, USB_ENDPOINT_ATTR_INTERRUPT, 4, NULL);
 
-	usbd_register_control_callback(
-				dev,
-				USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
-				USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
-				hid_control_request);
-	usbd_register_control_callback(
-				dev,
-				USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE,
-				USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
-				hid_control_request2);
+	usbd_register_control_callback(dev, USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE, USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT, hid_control_request);
+	usbd_register_control_callback(dev, USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE, USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT, hid_control_request2);
 
 	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB_DIV8);
-	/* SysTick interrupt every N clock pulses: set reload to N-1 */
+
+	// SysTick interrupt every N clock pulses: set reload to N-1
 	systick_set_reload(99999);
 	systick_interrupt_enable();
 	systick_counter_enable();
 }
 
-int main(void)
-{
+static void delay_setup(void){
+	rcc_periph_clock_enable(RCC_TIM6);
+	timer_set_prescaler(TIM6, rcc_apb1_frequency / 1000000 - 1);
+	timer_set_period(TIM6, 0xffff);
+	timer_one_shot_mode(TIM6);
+}
+
+static void delay_us(uint16_t us){
+	TIM_ARR(TIM6) = us;
+	TIM_EGR(TIM6) = TIM_EGR_UG;
+	TIM_CR1(TIM6) |= TIM_CR1_CEN;
+	while (TIM_CR1(TIM6) & TIM_CR1_CEN);
+}
+
+static void delay_ms(uint32_t ms){
+    for(uint32_t i=ms;i>0;i--){
+        delay_us(1000);    
+    }
+}
+
+int main(void){
 	rcc_clock_setup_pll(&rcc_hsi_configs[RCC_CLOCK_HSI_48MHZ]);
 
+    delay_setup();
+
 	rcc_periph_clock_enable(RCC_GPIOA);
-	/*
-	 * This is a somewhat common cheap hack to trigger device re-enumeration
-	 * on startup.  Assuming a fixed external pullup on D+, (For USB-FS)
-	 * setting the pin to output, and driving it explicitly low effectively
-	 * "removes" the pullup.  The subsequent USB init will "take over" the
-	 * pin, and it will appear as a proper pullup to the host.
-	 * The magic delay is somewhat arbitrary, no guarantees on USBIF
-	 * compliance here, but "it works" in most places.
-	 */
-	gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ,
-		GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
+
+	gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
 	gpio_clear(GPIOA, GPIO12);
 	for (unsigned i = 0; i < 800000; i++) {
 		__asm__("nop");
@@ -300,12 +313,35 @@ int main(void)
 	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, hid_set_config);
 
-	while (1)
-		usbd_poll(usbd_dev);
+    NRF24L01_Init();
+
+    while(NRF24L01_Check() != 0) {
+      delay_ms(2000);
+    }
+
+    if(xMode == TX_MODE) {
+      NRF24L01_TX_Mode(rxAddress, txAddress);
+    } else if(xMode == RX_MODE) {
+      NRF24L01_RX_Mode(rxAddress, txAddress);
+    }
+    while(1) {
+      if(xMode == TX_MODE) {
+        uint8_t tmp[] = {0x1f, 
+          0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+          0x21, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x28,
+          0x31, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x38,
+          0x41, 0x12, 0x13, 0x14, 0x15, 0x16, 0x47, 0x48
+        };
+        NRF24L01_TxPacket(tmp, 32);
+        delay_ms(3000);
+      } else if(xMode == RX_MODE) {
+        NRF24L01_RxPacket(RX_BUF);
+      }
+    }
+	while (1) usbd_poll(usbd_dev);
 }
 
-void sys_tick_handler(void)
-{
+void sys_tick_handler(void){
 	static int x = 0;
 	static int dir = 1;
 	uint8_t buf[4] = {0, 0, 0, 0};
