@@ -2,9 +2,8 @@
 Arcadinator consists of a breakout board and a dual joystick usb composite firmware.  
 The breakout board is designed for an STM32F103, an NRF24L01 and 26 JST XH connectors.  
 Arcadinator is meant to be a cheap and open replacement to  
-for arcade control panel to usb boards like "zero delay usb encoder".  
-Additionally, Arcadinator supports two players instead of only one and  
-you can optionally use it wirelessly via NRF24L01.
+for arcade control panels like [this](/extras/img/2L12B.jpg) to usb boards like "zero delay".  
+Additionally, Arcadinator supports two players and you can optionally use it wirelessly via NRF24L01.
 
 I designed the breakout board with an Altium License from work,  
 but I will try to design the next iteration with Kicad.  
