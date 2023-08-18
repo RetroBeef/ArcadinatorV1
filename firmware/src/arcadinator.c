@@ -25,7 +25,7 @@ extern uint8_t RX_BUF[];
 extern uint8_t TX_BUF[];
 
 
-#define PACKET_SIZE 14
+#define PACKET_SIZE 64
 
 static usbd_device *usbd_dev;
 
@@ -46,89 +46,70 @@ const struct usb_device_descriptor dev_descr = {
 	.bNumConfigurations = 1,
 };
 
-static const uint8_t hid_report_descriptor[] = {
-  0x05, 0x01, // USAGE_PAGE (Generic Desktop)
-  0x09, 0x08, //JOYSTICK_TYPE_MULTI_AXIS, // USAGE (Multi axis)
-  0xA1, 0x01, // COLLECTION (Application)
-	//================================Input Report======================================//
-  	// WheelReport
-  	0x85, 0x03, //JOYSTICK_DEFAULT_REPORT_ID, // REPORT_ID (default 3)
-  	//0xA1, 0x00, // COLLECTION (Physical)
-  	0x05, 0x09, // USAGE_PAGE  (Button)
-  	0x19, 0x01, // USAGE_MINIMUM (Button 1)
-  	0x29, 0x08, // USAGE_MAXIMUM (Button 8)
-  	0x15, 0x00, // LOGICAL_MINIMUM (0)
-  	0x25, 0x01, // LOGICAL_MAXIMUM (1)
-  	0x75, 0x01, // REPORT_SIZE (1)
-  	0x95, 0x08, // REPORT_COUNT (8)
-  	0x55, 0x00, // UNIT_EXPONENT (0)
-  	0x65, 0x00, // UNIT (None)
-  	0x81, 0x02, //INPUT (Data,Var,Abs)
-
-  	//3 Axis: X, Y, Z
-  	0x05, 0x01, // USAGE_PAGE (Generic Desktop)
-  	0x09, 0x01, // USAGE (Pointer)
-  	0x16, 0x01, 0x80, //LOGICAL_MINIMUM (-32768)
-  	0x26, 0xFF, 0x7F, //LOGICAL_MAXIMUM (32767)
-  	0x75, 0x10, // REPORT_SIZE (16)
-  	0x95, 0x03, // REPORT_COUNT (3)
-  	0xA1, 0x00, // COLLECTION (Physical)
-  		0x09, 0x30, // USAGE (X)
-  		0x09, 0x31, // USAGE (Y)
-  		0x09, 0x32, // USAGE (Z)
-  		0x81, 0x02, // INPUT (Data,Var,Abs)
-  	0xc0, // END_COLLECTION (Physical)
-
-  	//simulation 3 Axis
-  	0x05, 0x02, // USAGE_PAGE (Simulation Controls)
-  	0x16, 0x01, 0x80, //LOGICAL_MINIMUM (-32768)
-  	0x26, 0xFF, 0x7F, //LOGICAL_MAXIMUM (32767)
-  	0x75, 0x10, // REPORT_SIZE (16)
-  	0x95, 0x03, // REPORT_COUNT (3)
-  	0xA1, 0x00, // COLLECTION (Physical)
-  		0x09, 0xC4, // USAGE (Accelerator)
-  		0x09, 0xC5, // USAGE (Brake)
-  		0x09, 0xC8, // USAGE (Steering)
-  		0x81, 0x02, // INPUT (Data,Var,Abs)
-  	0xc0, // END_COLLECTION 
-
-  0xC0, // END COLLECTION ()
+static const uint8_t hid_report_descriptor_player1[] = {
+    0x05, 0x01,     // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x05,     // Usage (Game Pad)
+    0xA1, 0x01,     // Collection (Application)
+    0x15, 0x00,     // Logical Minimum (0)
+    0x25, 0x01,     // Logical Maximum (1)
+    0x35, 0x00,     // Physical Minimum (0)
+    0x45, 0x01,     // Physical Maximum (1)
+    0x75, 0x01,     // Report Size (1)
+    0x95, 0x08,     // Report Count (8)
+    0x05, 0x09,     // Usage Page (Button)
+    0x19, 0x01,     // Usage Minimum (Button 1)
+    0x29, 0x08,     // Usage Maximum (Button 8)
+    0x81, 0x02,     // Input (Data,Var,Abs)
+    0x75, 0x08,     // Report Size (8)
+    0x95, 0x01,     // Report Count (1)
+    0x81, 0x03,     // Input (Const,Var,Abs)
+    0x05, 0x01,     // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x39,     // Usage (Hat switch)
+    0x15, 0x00,     // Logical Minimum (0)
+    0x25, 0x07,     // Logical Maximum (7)
+    0x35, 0x00,     // Physical Minimum (0)
+    0x46, 0x3B, 0x01,// Physical Maximum (315)
+    0x65, 0x14,     // Unit (Eng Rot: Degree)
+    0x75, 0x04,     // Report Size (4)
+    0x95, 0x01,     // Report Count (1)
+    0x81, 0x42,     // Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x65, 0x00,     // Unit (None)
+    0x95, 0x01,     // Report Count (1)
+    0x81, 0x01,     // Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0            // End Collection
 };
 
-static const uint8_t hid_report_descriptor2[] = {
-  0x05, 0x01, // USAGE_PAGE (Generic Desktop)
-  0x09, 0x08, //JOYSTICK_TYPE_MULTI_AXIS, // USAGE (Multi axis)
-  0xA1, 0x01, // COLLECTION (Application)
-	//================================Input Report======================================//
-  	// WheelReport
-  	0x85, 0x03, //JOYSTICK_DEFAULT_REPORT_ID, // REPORT_ID (default 3)
-  	//0xA1, 0x00, // COLLECTION (Physical)
-  	0x05, 0x09, // USAGE_PAGE  (Button)
-  	0x19, 0x01, // USAGE_MINIMUM (Button 1)
-  	0x29, 0x08, // USAGE_MAXIMUM (Button 8)
-  	0x15, 0x00, // LOGICAL_MINIMUM (0)
-  	0x25, 0x01, // LOGICAL_MAXIMUM (1)
-  	0x75, 0x01, // REPORT_SIZE (1)
-  	0x95, 0x08, // REPORT_COUNT (8)
-  	0x55, 0x00, // UNIT_EXPONENT (0)
-  	0x65, 0x00, // UNIT (None)
-  	0x81, 0x02, //INPUT (Data,Var,Abs)
-
-  	//3 Axis: X, Y, Z
-  	0x05, 0x01, // USAGE_PAGE (Generic Desktop)
-  	0x09, 0x01, // USAGE (Pointer)
-  	0x16, 0x01, 0x80, //LOGICAL_MINIMUM (-32768)
-  	0x26, 0xFF, 0x7F, //LOGICAL_MAXIMUM (32767)
-  	0x75, 0x10, // REPORT_SIZE (16)
-  	0x95, 0x03, // REPORT_COUNT (3)
-  	0xA1, 0x00, // COLLECTION (Physical)
-  		0x09, 0x30, // USAGE (X)
-  		0x09, 0x31, // USAGE (Y)
-  		0x09, 0x32, // USAGE (Z)
-  		0x81, 0x02, // INPUT (Data,Var,Abs)
-  	0xc0, // END_COLLECTION (Physical)
-
-  0xC0, // END COLLECTION ()
+static const uint8_t hid_report_descriptor_player2[] = {
+    0x05, 0x01,     // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x05,     // Usage (Game Pad)
+    0xA1, 0x01,     // Collection (Application)
+    0x15, 0x00,     // Logical Minimum (0)
+    0x25, 0x01,     // Logical Maximum (1)
+    0x35, 0x00,     // Physical Minimum (0)
+    0x45, 0x01,     // Physical Maximum (1)
+    0x75, 0x01,     // Report Size (1)
+    0x95, 0x08,     // Report Count (8)
+    0x05, 0x09,     // Usage Page (Button)
+    0x19, 0x01,     // Usage Minimum (Button 1)
+    0x29, 0x08,     // Usage Maximum (Button 8)
+    0x81, 0x02,     // Input (Data,Var,Abs)
+    0x75, 0x08,     // Report Size (8)
+    0x95, 0x01,     // Report Count (1)
+    0x81, 0x03,     // Input (Const,Var,Abs)
+    0x05, 0x01,     // Usage Page (Generic Desktop Ctrls)
+    0x09, 0x39,     // Usage (Hat switch)
+    0x15, 0x00,     // Logical Minimum (0)
+    0x25, 0x07,     // Logical Maximum (7)
+    0x35, 0x00,     // Physical Minimum (0)
+    0x46, 0x3B, 0x01,// Physical Maximum (315)
+    0x65, 0x14,     // Unit (Eng Rot: Degree)
+    0x75, 0x04,     // Report Size (4)
+    0x95, 0x01,     // Report Count (1)
+    0x81, 0x42,     // Input (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x65, 0x00,     // Unit (None)
+    0x95, 0x01,     // Report Count (1)
+    0x81, 0x01,     // Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0            // End Collection
 };
 
 static const struct {
@@ -141,13 +122,13 @@ static const struct {
 	.hid_descriptor = {
 		.bLength = sizeof(hid_function),
 		.bDescriptorType = USB_DT_HID,
-		.bcdHID = 0x0100,
+		.bcdHID = 0x0111,
 		.bCountryCode = 0,
 		.bNumDescriptors = 1,
 	},
 	.hid_report = {
 		.bReportDescriptorType = USB_DT_REPORT,
-		.wDescriptorLength = sizeof(hid_report_descriptor),
+		.wDescriptorLength = sizeof(hid_report_descriptor_player1),
 	}
 };
 
@@ -157,7 +138,7 @@ const struct usb_endpoint_descriptor hid_endpoint = {
 	.bEndpointAddress = 0x81,
 	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
 	.wMaxPacketSize = PACKET_SIZE,
-	.bInterval = 0x20,
+	.bInterval = 10,
 };
 
 const struct usb_endpoint_descriptor hid_endpoint2 = {
@@ -166,7 +147,7 @@ const struct usb_endpoint_descriptor hid_endpoint2 = {
 	.bEndpointAddress = 0x82,
 	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
 	.wMaxPacketSize = PACKET_SIZE,
-	.bInterval = 0x20,
+	.bInterval = 10,
 };
 
 const struct usb_interface_descriptor hid_iface = {
@@ -176,8 +157,8 @@ const struct usb_interface_descriptor hid_iface = {
 	.bAlternateSetting = 0,
 	.bNumEndpoints = 1,
 	.bInterfaceClass = USB_CLASS_HID,
-	.bInterfaceSubClass = 1, /* boot */
-	.bInterfaceProtocol = 2, /* mouse */
+	.bInterfaceSubClass = 0,
+	.bInterfaceProtocol = 0,
 	.iInterface = 0,
 
 	.endpoint = &hid_endpoint,
@@ -193,8 +174,8 @@ const struct usb_interface_descriptor hid_iface2 = {
 	.bAlternateSetting = 0,
 	.bNumEndpoints = 1,
 	.bInterfaceClass = USB_CLASS_HID,
-	.bInterfaceSubClass = 1, /* boot */
-	.bInterfaceProtocol = 2, /* mouse */
+	.bInterfaceSubClass = 0,
+	.bInterfaceProtocol = 0,
 	.iInterface = 0,
 
 	.endpoint = &hid_endpoint2,
@@ -214,19 +195,19 @@ const struct usb_interface ifaces[] = {{
 const struct usb_config_descriptor config = {
 	.bLength = USB_DT_CONFIGURATION_SIZE,
 	.bDescriptorType = USB_DT_CONFIGURATION,
-	.wTotalLength = 2,
+	.wTotalLength = 0,
 	.bNumInterfaces = 2,
 	.bConfigurationValue = 1,
 	.iConfiguration = 0,
-	.bmAttributes = 0xC0,
+	.bmAttributes = 0x80,
 	.bMaxPower = 0x32,
 
 	.interface = ifaces,
 };
 
 static const char *usb_strings[] = {
-	"RetroBeef Arcadinator",
-	"DualJoystiX",
+	"RetroBeef",
+	"Arcadinator DualJoystiX",
 	"V1"
 };
 
@@ -240,8 +221,8 @@ static enum usbd_request_return_codes hid_control_request(usbd_device *dev, stru
 	if((req->bmRequestType != 0x81) || (req->bRequest != USB_REQ_GET_DESCRIPTOR) || (req->wValue != 0x2200)) return USBD_REQ_NOTSUPP;
 
 	// Handle the HID report descriptor.
-	*buf = (uint8_t *)hid_report_descriptor;
-	*len = sizeof(hid_report_descriptor);
+	*buf = (uint8_t *)hid_report_descriptor_player1;
+	*len = sizeof(hid_report_descriptor_player1);
 
 	return USBD_REQ_HANDLED;
 }
@@ -253,8 +234,8 @@ static enum usbd_request_return_codes hid_control_request2(usbd_device *dev, str
 	if((req->bmRequestType != 0x82) || (req->bRequest != USB_REQ_GET_DESCRIPTOR) || (req->wValue != 0x2200)) return USBD_REQ_NOTSUPP;
 
 	// Handle the HID report descriptor
-	*buf = (uint8_t *)hid_report_descriptor2;
-	*len = sizeof(hid_report_descriptor2);
+	*buf = (uint8_t *)hid_report_descriptor_player2;
+	*len = sizeof(hid_report_descriptor_player2);
 
 	return USBD_REQ_HANDLED;
 }
@@ -263,11 +244,19 @@ static void hid_set_config(usbd_device *dev, uint16_t wValue){
 	(void)wValue;
 	(void)dev;
 
-	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_INTERRUPT, 4, NULL);
-    usbd_ep_setup(dev, 0x82, USB_ENDPOINT_ATTR_INTERRUPT, 4, NULL);
+	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_INTERRUPT, 64, NULL);
+    usbd_ep_setup(dev, 0x82, USB_ENDPOINT_ATTR_INTERRUPT, 64, NULL);
 
-	usbd_register_control_callback(dev, USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE, USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT, hid_control_request);
-	usbd_register_control_callback(dev, USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE, USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT, hid_control_request2);
+    usbd_register_control_callback(
+        dev,
+        USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
+        USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
+        hid_control_request);
+    usbd_register_control_callback(
+        dev,
+        USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
+        USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
+        hid_control_request2);
 
 	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB_DIV8);
 
@@ -298,14 +287,15 @@ static void delay_ms(uint32_t ms){
 }
 
 int main(void){
-	rcc_clock_setup_pll(&rcc_hsi_configs[RCC_CLOCK_HSI_48MHZ]);
+	//rcc_clock_setup_pll(&rcc_hsi_configs[RCC_CLOCK_HSI_48MHZ]);
+    rcc_clock_setup_in_hse_8mhz_out_72mhz();
 
-    delay_setup();
+    //delay_setup();
 
 	rcc_periph_clock_enable(RCC_GPIOA);
 
-	gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
-	gpio_clear(GPIOA, GPIO12);
+    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
+    gpio_clear(GPIOA, GPIO12);
 	for (unsigned i = 0; i < 800000; i++) {
 		__asm__("nop");
 	}
@@ -313,7 +303,7 @@ int main(void){
 	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, hid_set_config);
 
-    NRF24L01_Init();
+    /*NRF24L01_Init();
 
     while(NRF24L01_Check() != 0) {
       delay_ms(2000);
@@ -337,7 +327,7 @@ int main(void){
       } else if(xMode == RX_MODE) {
         NRF24L01_RxPacket(RX_BUF);
       }
-    }
+    }*/
 	while (1) usbd_poll(usbd_dev);
 }
 
@@ -353,6 +343,6 @@ void sys_tick_handler(void){
 	if (x < -30)
 		dir = -dir;
 
-	usbd_ep_write_packet(usbd_dev, 0x81, buf, 4);
-    usbd_ep_write_packet(usbd_dev, 0x82, buf, 4);
+	usbd_ep_write_packet(usbd_dev, 0x81, buf, 64);
+    usbd_ep_write_packet(usbd_dev, 0x82, buf, 64);
 }
