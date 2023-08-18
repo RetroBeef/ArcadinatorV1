@@ -3,7 +3,7 @@ Arcadinator consists of a breakout board and a dual joystick/gamepad usb composi
 The breakout board is designed for an STM32F103 Bluepill, an NRF24L01 Board and 26 JST XH connectors.  
 
 # Motivation
-Arcadinator is meant to be a cheap and open replacement for [arcade control panel](/extras/img/2L12B.jpg)-to-usb boards like "zero delay".  
+Arcadinator is meant to be a cheap and open alternative for [arcade control panel](/extras/img/2L12B.jpg)-to-usb boards like "zero delay".  
 Additionally, Arcadinator supports two players and you can optionally use it wirelessly via NRF24L01.
 
 # Hardware
@@ -19,6 +19,16 @@ and I started porting NRF24 code from STM32 HAL to libopencm3
 Before I decided to use libopencm3, I experimented with stm32arduino,  
 but could not get a joystick composite device to work quickly.  
 You can find a working wireless keyboard experiment [here](/extras/old/ArcadinatorKeyboard/)
+
+# Cloning, Building, Flashing
+[libopencm3 prerequisites](https://github.com/libopencm3/libopencm3#prerequisites)  
+[OpenOCD](https://openocd.org/pages/getting-openocd.html)
+```
+git clone --recursive https://github.com/RetroBeef/ArcadinatorV1
+cd ArcadinatorV1/firmware
+make -C libopencm3 #you need to do this only once
+make flash
+```
 
 # Licenses
 The hardware is licensed under [CERN Open Hardware Licence Version 2 - Strongly Reciprocal](/hardware/LICENSE)  
