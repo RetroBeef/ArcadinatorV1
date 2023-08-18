@@ -3,8 +3,7 @@ Arcadinator consists of a breakout board and a dual joystick/gamepad usb composi
 The breakout board is designed for an STM32F103 Bluepill, an NRF24L01 Board and 26 JST XH connectors.  
 
 # Motivation
-Arcadinator is meant to be a cheap and open replacement for arcade control panels like [this](/extras/img/2L12B.jpg) 
-to usb boards like "zero delay".  
+Arcadinator is meant to be a cheap and open replacement for [arcade control panel](/extras/img/2L12B.jpg)-to-usb boards like "zero delay".  
 Additionally, Arcadinator supports two players and you can optionally use it wirelessly via NRF24L01.
 
 # Hardware
