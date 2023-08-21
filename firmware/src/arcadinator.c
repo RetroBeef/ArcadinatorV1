@@ -30,6 +30,9 @@ PanelData_t panelState = {0};
 
 static usbd_device *usbd_dev;
 
+//static uint8_t doButtonUpdates = 0;
+//static uint32_t lastButtonsUpdateUs = 0;
+
 const struct usb_device_descriptor dev_descr = {
 	.bLength = USB_DT_DEVICE_SIZE,
 	.bDescriptorType = USB_DT_DEVICE,
@@ -47,25 +50,7 @@ const struct usb_device_descriptor dev_descr = {
 	.bNumConfigurations = 1,
 };
 
-static const uint8_t hid_report_descriptor_player1[] = {
-    0x05, 0x01,         // Usage Page (Generic Desktop)
-    0x09, 0x05,         // Usage (Game Pad)
-    0xA1, 0x01,         // Collection (Application)
-    0x15, 0x00,         // Logical Minimum (0)
-    0x25, 0x01,         // Logical Maximum (1)
-    0x35, 0x00,         // Physical Minimum (0)
-    0x45, 0x01,         // Physical Maximum (1)
-    0x75, 0x01,         // Report Size (1)
-    0x95, 0x0C,         // Report Count (12)
-    0x05, 0x09,         // Usage Page (Button)
-    0x19, 0x01,         // Usage Minimum (Button 1)
-    0x29, 0x0C,         // Usage Maximum (Button 12)
-    0x81, 0x02,         // Input (Data, Variable, Absolute)
-
-    0xC0                // End Collection
-};
-
-static const uint8_t hid_report_descriptor_player2[] = {
+static const uint8_t hid_report_descriptor[] = {
     0x05, 0x01,         // Usage Page (Generic Desktop)
     0x09, 0x05,         // Usage (Game Pad)
     0xA1, 0x01,         // Collection (Application)
@@ -93,13 +78,13 @@ static const struct {
 	.hid_descriptor = {
 		.bLength = sizeof(hid_function),
 		.bDescriptorType = USB_DT_HID,
-		.bcdHID = 0x0111,
+		.bcdHID = 0x0100,
 		.bCountryCode = 0,
 		.bNumDescriptors = 1,
 	},
 	.hid_report = {
 		.bReportDescriptorType = USB_DT_REPORT,
-		.wDescriptorLength = sizeof(hid_report_descriptor_player1),
+		.wDescriptorLength = sizeof(hid_report_descriptor),
 	}
 };
 
@@ -184,30 +169,19 @@ static const char *usb_strings[] = {
 
 uint8_t usbd_control_buffer[128];
 
-static enum usbd_request_return_codes hid_control_request_player1(usbd_device *dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len, void (**complete)(usbd_device *, struct usb_setup_data *)){
+static enum usbd_request_return_codes hid_control_request(usbd_device *dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len, void (**complete)(usbd_device *, struct usb_setup_data *)){
 	(void)complete;
 	(void)dev;
 
-	if((req->bmRequestType != 0x81) || (req->bRequest != USB_REQ_GET_DESCRIPTOR) || (req->wValue != 0x2200)) return USBD_REQ_NOTSUPP;
+	if((req->bRequest != USB_REQ_GET_DESCRIPTOR) || (req->wValue != 0x2200)){
+        return USBD_REQ_NOTSUPP;
+    }else if(req->bmRequestType == 0x81 || req->bmRequestType == 0x82){
+	    *buf = (uint8_t *)hid_report_descriptor;
+	    *len = sizeof(hid_report_descriptor);
+        return USBD_REQ_HANDLED;
+    }
 
-	// Handle the HID report descriptor.
-	*buf = (uint8_t *)hid_report_descriptor_player1;
-	*len = sizeof(hid_report_descriptor_player1);
-
-	return USBD_REQ_HANDLED;
-}
-
-static enum usbd_request_return_codes hid_control_request_player2(usbd_device *dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len, void (**complete)(usbd_device *, struct usb_setup_data *)){
-	(void)complete;
-	(void)dev;
-
-	if((req->bmRequestType != 0x82) || (req->bRequest != USB_REQ_GET_DESCRIPTOR) || (req->wValue != 0x2200)) return USBD_REQ_NOTSUPP;
-
-	// Handle the HID report descriptor
-	*buf = (uint8_t *)hid_report_descriptor_player2;
-	*len = sizeof(hid_report_descriptor_player2);
-
-	return USBD_REQ_HANDLED;
+    return USBD_REQ_NOTSUPP;
 }
 
 static void hid_set_config(usbd_device *dev, uint16_t wValue){
@@ -217,19 +191,9 @@ static void hid_set_config(usbd_device *dev, uint16_t wValue){
 	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_INTERRUPT, sizeof(panelState.obj.player1.bytes), NULL);
     usbd_ep_setup(dev, 0x82, USB_ENDPOINT_ATTR_INTERRUPT, sizeof(panelState.obj.player2.bytes), NULL);
 
-    usbd_register_control_callback(
-        dev,
-        USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
-        USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
-        hid_control_request_player1);
-    usbd_register_control_callback(
-        dev,
-        USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
-        USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
-        hid_control_request_player2);
+    usbd_register_control_callback(dev, USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE, USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT, hid_control_request);
 
-        timer_enable_counter(TIM4);
-        timer_enable_irq(TIM4, TIM_DIER_CC1IE);
+    //doButtonUpdates = 1;
 }
 
 static void buttons_update(void){
@@ -260,31 +224,7 @@ static void buttons_update(void){
     panelState.obj.exitButton = !digitalRead(B23);
 }
 
-void tim4_isr(void) {
-    if (timer_get_flag(TIM4, TIM_SR_CC1IF)) {
-        timer_clear_flag(TIM4, TIM_SR_CC1IF);
-
-        buttons_update();  
-
-        usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
-        usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
-    }
-}
-
 static void usb_setup(void) {
-
-    rcc_periph_clock_enable(RCC_TIM4);
-    nvic_enable_irq(NVIC_TIM4_IRQ);
-    rcc_periph_reset_pulse(RST_TIM4);
-    timer_set_mode(TIM4, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-    timer_set_prescaler(TIM4, ((rcc_apb1_frequency * 2) / 100));
-
-	timer_disable_preload(TIM4);
-	timer_continuous_mode(TIM4);
-
-    timer_set_period(TIM4, 65535);
-    timer_set_oc_value(TIM4, TIM_OC1, 65535);
-
     gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
     gpio_clear(GPIOA, GPIO12);
 	for (unsigned i = 0; i < 800000; i++) {
@@ -298,7 +238,7 @@ static void usb_setup(void) {
 static void clocks_setup(void){
     rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_72MHZ]);
 
-    //systick_setup();
+    systick_setup();
 
     rcc_periph_clock_enable(RCC_GPIOA);
     rcc_periph_clock_enable(RCC_GPIOB);
@@ -309,8 +249,8 @@ int main(void){
     clocks_setup();
     //gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
     //gpio_set(GPIOC, GPIO13);
-    buttons_setup();
     usb_setup();
+    buttons_setup();
     /*NRF24L01_Init();
 
     while(NRF24L01_Check() != 0) {
@@ -338,5 +278,11 @@ int main(void){
     }*/
 	while (1){
         usbd_poll(usbd_dev);
+        //if(micros() - lastButtonsUpdateUs > 1000){
+            buttons_update(); 
+            usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
+            usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
+            //lastButtonsUpdateUs = micros();
+        //}
     }
 }
