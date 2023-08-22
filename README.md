@@ -14,9 +14,8 @@ a backup of the import [here](/hardware/EasyEDA_Backup.zip)
 and you can find the gerber files I sent to JLCPCB [here](/extras/production/gerber.zip)  
 
 # Software
-The firmware is still work in progress, but enumeration as dual gamepad usb composite device already works  
-and I started porting NRF24 code from STM32 HAL to libopencm3  
-Before I decided to use libopencm3, I experimented with stm32arduino,  
+The firmware is still work in progress, but enumeration as dual gamepad usb composite device and hid reports on button presses already work. I also started porting NRF24 code from STM32 HAL to libopencm3.  
+Before I decided to use libopencm3, I experimented with stm32duino,  
 but could not get a joystick composite device to work quickly.  
 You can find a working wireless keyboard experiment [here](/extras/old/ArcadinatorKeyboard/)
 
