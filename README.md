@@ -31,7 +31,7 @@ make flash
 
 # Licenses
 The hardware is licensed under [CERN Open Hardware Licence Version 2 - Strongly Reciprocal](/hardware/LICENSE)  
-and the firmware is licensed under [GNU GENERAL PUBLIC LICENSE Version 2](/firmware/LICENSE)  
+and the firmware is licensed under [GNU GENERAL PUBLIC LICENSE Version 3](/firmware/LICENSE)  
 
 # Assembled Board
 ![Assembled Board](extras/img/board.jpg?raw=true "Assembled Board")
