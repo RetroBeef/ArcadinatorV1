@@ -30,8 +30,9 @@ PanelData_t panelState = {0};
 
 static usbd_device *usbd_dev;
 
-//static uint8_t doButtonUpdates = 0;
-//static uint32_t lastButtonsUpdateUs = 0;
+static uint8_t doButtonUpdates = 0;
+static uint32_t lastButtonsUpdateMs = 0;
+const uint32_t buttonUpdateIntervalMs = 8;
 
 const struct usb_device_descriptor dev_descr = {
 	.bLength = USB_DT_DEVICE_SIZE,
@@ -193,7 +194,7 @@ static void hid_set_config(usbd_device *dev, uint16_t wValue){
 
     usbd_register_control_callback(dev, USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE, USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT, hid_control_request);
 
-    //doButtonUpdates = 1;
+    doButtonUpdates = 1;
 }
 
 static void buttons_update(void){
@@ -208,20 +209,20 @@ static void buttons_update(void){
     panelState.obj.player1.obj.button05 = !digitalRead(B09);
     panelState.obj.player1.obj.button06 = !digitalRead(B10);
     panelState.obj.player1.obj.buttonStart = !digitalRead(B11);
+    panelState.obj.player1.obj.buttonExtra = !digitalRead(B12);
 
-    panelState.obj.player2.obj.joyUp = !digitalRead(B12);
-    panelState.obj.player2.obj.joyDown = !digitalRead(B13);
-    panelState.obj.player2.obj.joyLeft = !digitalRead(B14);
-    panelState.obj.player2.obj.joyRight = !digitalRead(B15);
-    panelState.obj.player2.obj.button01 = !digitalRead(B16);
-    panelState.obj.player2.obj.button02 = !digitalRead(B17);
-    panelState.obj.player2.obj.button03 = !digitalRead(B18);
-    panelState.obj.player2.obj.button04 = !digitalRead(B19);
-    panelState.obj.player2.obj.button05 = !digitalRead(B20);
-    panelState.obj.player2.obj.button06 = !digitalRead(B21);
-    panelState.obj.player2.obj.buttonStart = !digitalRead(B22);
-
-    panelState.obj.exitButton = !digitalRead(B23);
+    panelState.obj.player2.obj.joyUp = !digitalRead(B13);
+    panelState.obj.player2.obj.joyDown = !digitalRead(B14);
+    panelState.obj.player2.obj.joyLeft = !digitalRead(B15);
+    panelState.obj.player2.obj.joyRight = !digitalRead(B16);
+    panelState.obj.player2.obj.button01 = !digitalRead(B17);
+    panelState.obj.player2.obj.button02 = !digitalRead(B18);
+    panelState.obj.player2.obj.button03 = !digitalRead(B19);
+    panelState.obj.player2.obj.button04 = !digitalRead(B20);
+    panelState.obj.player2.obj.button05 = !digitalRead(B21);
+    panelState.obj.player2.obj.button06 = !digitalRead(B22);
+    panelState.obj.player2.obj.buttonStart = !digitalRead(B23);
+    panelState.obj.player2.obj.buttonExtra = !digitalRead(B24);
 }
 
 static void usb_setup(void) {
@@ -278,11 +279,12 @@ int main(void){
     }*/
 	while (1){
         usbd_poll(usbd_dev);
-        //if(micros() - lastButtonsUpdateUs > 1000){
+        if(!doButtonUpdates)continue;
+        if(millis() - lastButtonsUpdateMs >= buttonUpdateIntervalMs){
             buttons_update(); 
             usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
             usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
-            //lastButtonsUpdateUs = micros();
-        //}
+            lastButtonsUpdateMs = millis();
+        }
     }
 }

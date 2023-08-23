@@ -42,7 +42,7 @@ button_t B07 = {
 button_t B08 = {
     RCC_GPIOA,
     GPIOA,
-    GPIO5
+    GPIO15
 };
 button_t B09 = {
     RCC_GPIOB,
@@ -154,5 +154,7 @@ void buttons_setup(void){
     button_setup_input(B20);
     button_setup_input(B21);
     button_setup_input(B22);
+    button_setup_input(B23);
+    button_setup_input(B24);
 }
 

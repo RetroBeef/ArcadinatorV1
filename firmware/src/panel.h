@@ -17,6 +17,7 @@ typedef struct{
   uint8_t button05 : 1;
   uint8_t button06 : 1;
   uint8_t buttonStart : 1;
+  uint8_t buttonExtra : 1;
 } PlayerData_s;
 
 typedef union{
@@ -28,7 +29,6 @@ typedef union{
 typedef struct{
   PlayerData_t player1;
   PlayerData_t player2;
-  uint8_t exitButton : 1;
 } PanelData_s;
 
 typedef union{
