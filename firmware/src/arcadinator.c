@@ -9,22 +9,8 @@
 #include <libopencm3/usb/hid.h>
 
 #include "systick.h"
-#include "nrf24l01.h"
 #include "buttons.h"
 #include "panel.h"
-
-
-uint8_t rxAddress[NRF24L01_ADDR_WIDTH] = {0x32,0x4E,0x6F,0x64,0x65};
-uint8_t txAddress[NRF24L01_ADDR_WIDTH] = {0x11,0x22,0x33,0x44,0x55};
-
-typedef enum{
-    RX_MODE = 0,
-    TX_MODE = 1
-} xMode_t;
-
-uint8_t xMode = TX_MODE;
-extern uint8_t RX_BUF[];
-extern uint8_t TX_BUF[];
 
 PanelData_t panelState = {0};
 
@@ -60,10 +46,10 @@ static const uint8_t hid_report_descriptor[] = {
     0x35, 0x00,         // Physical Minimum (0)
     0x45, 0x01,         // Physical Maximum (1)
     0x75, 0x01,         // Report Size (1)
-    0x95, 0x0C,         // Report Count (12)
+    0x95, 0x02,         // Report Count (2)
     0x05, 0x09,         // Usage Page (Button)
     0x19, 0x01,         // Usage Minimum (Button 1)
-    0x29, 0x0C,         // Usage Maximum (Button 12)
+    0x29, 0x02,         // Usage Maximum (Button 2)
     0x81, 0x02,         // Input (Data, Variable, Absolute)
 
     0xC0                // End Collection
@@ -98,15 +84,6 @@ const struct usb_endpoint_descriptor hid_endpoint_player1 = {
 	.bInterval = 10,
 };
 
-const struct usb_endpoint_descriptor hid_endpoint_player2 = {
-	.bLength = USB_DT_ENDPOINT_SIZE,
-	.bDescriptorType = USB_DT_ENDPOINT,
-	.bEndpointAddress = 0x82,
-	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
-	.wMaxPacketSize = sizeof(panelState.obj.player2.bytes),
-	.bInterval = 10,
-};
-
 const struct usb_interface_descriptor hid_iface_player1 = {
 	.bLength = USB_DT_INTERFACE_SIZE,
 	.bDescriptorType = USB_DT_INTERFACE,
@@ -124,36 +101,16 @@ const struct usb_interface_descriptor hid_iface_player1 = {
 	.extralen = sizeof(hid_function),
 };
 
-const struct usb_interface_descriptor hid_iface_player2 = {
-	.bLength = USB_DT_INTERFACE_SIZE,
-	.bDescriptorType = USB_DT_INTERFACE,
-	.bInterfaceNumber = 1,
-	.bAlternateSetting = 0,
-	.bNumEndpoints = 1,
-	.bInterfaceClass = USB_CLASS_HID,
-	.bInterfaceSubClass = 0,
-	.bInterfaceProtocol = 0,
-	.iInterface = 0,
-
-	.endpoint = &hid_endpoint_player2,
-
-	.extra = &hid_function,
-	.extralen = sizeof(hid_function),
-};
-
 const struct usb_interface ifaces[] = {{
 	.num_altsetting = 1,
 	.altsetting = &hid_iface_player1,
-}, {
-	.num_altsetting = 1,
-	.altsetting = &hid_iface_player2,
 }};
 
 const struct usb_config_descriptor config = {
 	.bLength = USB_DT_CONFIGURATION_SIZE,
 	.bDescriptorType = USB_DT_CONFIGURATION,
 	.wTotalLength = 0,
-	.bNumInterfaces = 2,
+	.bNumInterfaces = 1,
 	.bConfigurationValue = 1,
 	.iConfiguration = 0,
 	.bmAttributes = 0x80,
@@ -164,7 +121,7 @@ const struct usb_config_descriptor config = {
 
 static const char *usb_strings[] = {
 	"RetroBeef",
-	"Arcadinator Dual",
+	"Arcadinator Shifter",
 	"V1"
 };
 
@@ -176,7 +133,7 @@ static enum usbd_request_return_codes hid_control_request(usbd_device *dev, stru
 
 	if((req->bRequest != USB_REQ_GET_DESCRIPTOR) || (req->wValue != 0x2200)){
         return USBD_REQ_NOTSUPP;
-    }else if(req->bmRequestType == 0x81 || req->bmRequestType == 0x82){
+    }else if(req->bmRequestType == 0x81){
 	    *buf = (uint8_t *)hid_report_descriptor;
 	    *len = sizeof(hid_report_descriptor);
         return USBD_REQ_HANDLED;
@@ -190,7 +147,6 @@ static void hid_set_config(usbd_device *dev, uint16_t wValue){
 	(void)dev;
 
 	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_INTERRUPT, sizeof(panelState.obj.player1.bytes), NULL);
-    usbd_ep_setup(dev, 0x82, USB_ENDPOINT_ATTR_INTERRUPT, sizeof(panelState.obj.player2.bytes), NULL);
 
     usbd_register_control_callback(dev, USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE, USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT, hid_control_request);
 
@@ -198,31 +154,8 @@ static void hid_set_config(usbd_device *dev, uint16_t wValue){
 }
 
 static void buttons_update(void){
-    panelState.obj.player1.obj.joyUp = !digitalRead(B01);
-    panelState.obj.player1.obj.joyDown = !digitalRead(B02);
-    panelState.obj.player1.obj.joyLeft = !digitalRead(B03);
-    panelState.obj.player1.obj.joyRight = !digitalRead(B04);
-    panelState.obj.player1.obj.button01 = !digitalRead(B05);
-    panelState.obj.player1.obj.button02 = !digitalRead(B06);
-    panelState.obj.player1.obj.button03 = !digitalRead(B07);
-    panelState.obj.player1.obj.button04 = !digitalRead(B08);
-    panelState.obj.player1.obj.button05 = !digitalRead(B09);
-    panelState.obj.player1.obj.button06 = !digitalRead(B10);
-    panelState.obj.player1.obj.buttonStart = !digitalRead(B11);
-    panelState.obj.player1.obj.buttonExtra = !digitalRead(B12);
-
-    panelState.obj.player2.obj.joyUp = !digitalRead(B13);
-    panelState.obj.player2.obj.joyDown = !digitalRead(B14);
-    panelState.obj.player2.obj.joyLeft = !digitalRead(B15);
-    panelState.obj.player2.obj.joyRight = !digitalRead(B16);
-    panelState.obj.player2.obj.button01 = !digitalRead(B17);
-    panelState.obj.player2.obj.button02 = !digitalRead(B18);
-    panelState.obj.player2.obj.button03 = !digitalRead(B19);
-    panelState.obj.player2.obj.button04 = !digitalRead(B20);
-    panelState.obj.player2.obj.button05 = !digitalRead(B21);
-    panelState.obj.player2.obj.button06 = !digitalRead(B22);
-    panelState.obj.player2.obj.buttonStart = !digitalRead(B23);
-    panelState.obj.player2.obj.buttonExtra = !digitalRead(B24);
+    panelState.obj.player1.obj.joyUp = !digitalRead(B23);
+    panelState.obj.player1.obj.joyDown = !digitalRead(B24);
 }
 
 static void usb_setup(void) {
@@ -248,42 +181,14 @@ static void clocks_setup(void){
 
 int main(void){
     clocks_setup();
-    //gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
-    //gpio_set(GPIOC, GPIO13);
     usb_setup();
     buttons_setup();
-    /*NRF24L01_Init();
-
-    while(NRF24L01_Check() != 0) {
-      delay_1ms(2000);
-    }
-
-    if(xMode == TX_MODE) {
-      NRF24L01_TX_Mode(rxAddress, txAddress);
-    } else if(xMode == RX_MODE) {
-      NRF24L01_RX_Mode(rxAddress, txAddress);
-    }
-    while(1) {
-      if(xMode == TX_MODE) {
-        uint8_t tmp[] = {0x1f, 
-          0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
-          0x21, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x28,
-          0x31, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x38,
-          0x41, 0x12, 0x13, 0x14, 0x15, 0x16, 0x47, 0x48
-        };
-        NRF24L01_TxPacket(tmp, 32);
-        delay_1ms(3000);
-      } else if(xMode == RX_MODE) {
-        NRF24L01_RxPacket(RX_BUF);
-      }
-    }*/
 	while (1){
         usbd_poll(usbd_dev);
         if(!doButtonUpdates)continue;
         if(millis() - lastButtonsUpdateMs >= buttonUpdateIntervalMs){
             buttons_update(); 
             usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
-            usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
             lastButtonsUpdateMs = millis();
         }
     }
