@@ -22,7 +22,7 @@ typedef enum{
     TX_MODE = 1
 } xMode_t;
 
-uint8_t xMode = TX_MODE;
+uint8_t xMode = RX_MODE;
 extern uint8_t RX_BUF[];
 extern uint8_t TX_BUF[];
 
@@ -252,16 +252,17 @@ int main(void){
     //gpio_set(GPIOC, GPIO13);
     usb_setup();
     buttons_setup();
-    /*NRF24L01_Init();
+/*    NRF24L01_Init();
 
     while(NRF24L01_Check() != 0) {
-      delay_1ms(2000);
+      //delay_1ms(2000);
+    	__asm("nop");
     }
 
     if(xMode == TX_MODE) {
-      NRF24L01_TX_Mode(rxAddress, txAddress);
+      NRF24L01_TX_Mode(txAddress, txAddress);
     } else if(xMode == RX_MODE) {
-      NRF24L01_RX_Mode(rxAddress, txAddress);
+      NRF24L01_RX_Mode(txAddress, txAddress);
     }
     while(1) {
       if(xMode == TX_MODE) {
@@ -272,9 +273,9 @@ int main(void){
           0x41, 0x12, 0x13, 0x14, 0x15, 0x16, 0x47, 0x48
         };
         NRF24L01_TxPacket(tmp, 32);
-        delay_1ms(3000);
       } else if(xMode == RX_MODE) {
         NRF24L01_RxPacket(RX_BUF);
+        if(RX_BUF[0])gpio_toggle(GPIOC, GPIO13);
       }
     }*/
 	while (1){
