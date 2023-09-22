@@ -189,7 +189,7 @@ uint8_t nrf24_tx_packet(uint8_t *buffer, uint8_t size){
   size = size > NRF24L01_PLOAD_WIDTH? NRF24L01_PLOAD_WIDTH : size;
   nrf24_write(NRF24L01_CMD_TX_PLOAD_W, buffer, size);
   CE(1);
-  while(IRQ != 0);//Waiting send finish
+  while(IRQ != 0);
 
   CE(0);
   status = nrf24_read_reg(NRF24L01_REG_STATUS);

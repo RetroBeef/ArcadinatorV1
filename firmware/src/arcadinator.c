@@ -22,7 +22,7 @@ typedef enum{
 	USB_MODE = 2
 } xMode_t;
 
-uint8_t xMode = RX_MODE;
+uint8_t xMode = USB_MODE;
 
 PanelData_t panelState = {0};
 
