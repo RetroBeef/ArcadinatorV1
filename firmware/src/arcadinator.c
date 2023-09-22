@@ -247,7 +247,7 @@ static void clocks_setup(void){
 int main(void){
     clocks_setup();
     if(xMode == RX_MODE || xMode == USB_MODE)usb_setup();
-    buttons_setup();
+    if(xMode == TX_MODE || xMode == USB_MODE)buttons_setup();
 
     if(xMode == RX_MODE || xMode == TX_MODE){
     	nrf24_init();
@@ -258,7 +258,7 @@ int main(void){
     }
 
     if(xMode == TX_MODE) {
-      nrf24_tx_mode(rxAddress, txAddress);
+    	nrf24_tx_mode(rxAddress, txAddress);
     } else if(xMode == RX_MODE) {
     	nrf24_rx_mode(rxAddress, txAddress);
     }
@@ -277,7 +277,7 @@ int main(void){
             } else if(xMode == RX_MODE || xMode == USB_MODE) {
               if(xMode == RX_MODE){
             	  nrf24_rx_packet(panelState.bytes, sizeof(panelState.bytes));
-            	  //if(RX_BUF[0])gpio_toggle(GPIOC, GPIO13);
+            	  gpio_toggle(GPIOC, GPIO13);
               }
               usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
               usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
