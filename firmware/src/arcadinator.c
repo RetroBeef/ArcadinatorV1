@@ -22,7 +22,7 @@ typedef enum{
 	USB_MODE = 2
 } xMode_t;
 
-uint8_t xMode = USB_MODE;
+uint8_t xMode = RX_MODE;//USB_MODE;
 
 PanelData_t panelState = {0};
 
@@ -223,6 +223,10 @@ static void buttons_update(void){
     panelState.obj.player2.obj.buttonExtra = !digitalRead(B24);
 }
 
+void usb_lp_can_rx0_isr(){
+	usbd_poll(usbd_dev);
+}
+
 static void usb_setup(void) {
     gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
     gpio_clear(GPIOA, GPIO12);
@@ -232,6 +236,9 @@ static void usb_setup(void) {
 
 	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, hid_set_config);
+
+    nvic_set_priority(NVIC_USB_LP_CAN_RX0_IRQ, 2 << 6);
+    nvic_enable_irq(NVIC_USB_LP_CAN_RX0_IRQ);
 }
 
 static void clocks_setup(void){
@@ -265,7 +272,6 @@ int main(void){
 
 	while (1){
         if(xMode == RX_MODE || xMode == USB_MODE){
-        	usbd_poll(usbd_dev);
         	if(!doButtonUpdates)continue;
         }
         if(millis() - lastButtonsUpdateMs >= buttonUpdateIntervalMs){
