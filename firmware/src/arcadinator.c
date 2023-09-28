@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/rcc.h>
@@ -13,8 +14,10 @@
 #include "buttons.h"
 #include "panel.h"
 
-uint8_t rxAddress[NRF24L01_ADDR_WIDTH] = {0x32,0x4E,0x6F,0x64,0x65};//todo
-uint8_t txAddress[NRF24L01_ADDR_WIDTH] = {0x32,0x4E,0x6F,0x64,0x65};
+uint8_t rxAddress[NRF24L01_ADDR_WIDTH] = {0x11,0x22,0x33,0x44,0x55};//todo
+uint8_t txAddress[NRF24L01_ADDR_WIDTH] = {0x11,0x22,0x33,0x44,0x55};
+
+uint8_t nrfBuf[NRF24L01_PLOAD_WIDTH] = {0};
 
 typedef enum{
     RX_MODE = 0,
@@ -22,7 +25,7 @@ typedef enum{
 	USB_MODE = 2
 } xMode_t;
 
-uint8_t xMode = RX_MODE;//USB_MODE;
+uint8_t xMode = USB_MODE;
 
 PanelData_t panelState = {0};
 
@@ -30,7 +33,7 @@ static usbd_device *usbd_dev;
 
 static uint8_t doButtonUpdates = 0;
 static uint32_t lastButtonsUpdateMs = 0;
-const uint32_t buttonUpdateIntervalMs = 8;
+const uint32_t buttonUpdateIntervalMs = 1;
 
 const struct usb_device_descriptor dev_descr = {
 	.bLength = USB_DT_DEVICE_SIZE,
@@ -253,13 +256,18 @@ static void clocks_setup(void){
 
 int main(void){
     clocks_setup();
-    if(xMode == RX_MODE || xMode == USB_MODE)usb_setup();
-    if(xMode == TX_MODE || xMode == USB_MODE)buttons_setup();
+
+    if(xMode == RX_MODE || xMode == USB_MODE){
+    	usb_setup();
+    }
+
+    if(xMode == TX_MODE || xMode == USB_MODE){
+    	buttons_setup();
+    }
 
     if(xMode == RX_MODE || xMode == TX_MODE){
     	nrf24_init();
         while(nrf24_check() != 0) {
-          //delay_1ms(2000);
         	__asm("nop");
         }
     }
@@ -268,27 +276,38 @@ int main(void){
     	nrf24_tx_mode(rxAddress, txAddress);
     } else if(xMode == RX_MODE) {
     	nrf24_rx_mode(rxAddress, txAddress);
+        gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
+        gpio_set(GPIOC, GPIO13);
     }
 
 	while (1){
         if(xMode == RX_MODE || xMode == USB_MODE){
         	if(!doButtonUpdates)continue;
         }
-        if(millis() - lastButtonsUpdateMs >= buttonUpdateIntervalMs){
-            if(xMode == TX_MODE || xMode == USB_MODE){
-            	buttons_update();
+
+        if(xMode == TX_MODE || xMode == USB_MODE){
+        	buttons_update();
+        }
+
+        if(xMode == TX_MODE) {
+            memcpy(nrfBuf, panelState.bytes, sizeof(panelState.bytes));
+            nrf24_tx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
+        } else if(xMode == RX_MODE || xMode == USB_MODE) {
+        	if(xMode == RX_MODE){
+        		if(!IRQ){
+        			nrf24_rx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
+        			memcpy(panelState.bytes, nrfBuf, sizeof(panelState.bytes));
+            		gpio_clear(GPIOC, GPIO13);
+            	}else{
+            		gpio_set(GPIOC, GPIO13);
+            	}
             }
-            if(xMode == TX_MODE) {
-              nrf24_tx_packet(panelState.bytes, sizeof(panelState.bytes));
-            } else if(xMode == RX_MODE || xMode == USB_MODE) {
-              if(xMode == RX_MODE){
-            	  nrf24_rx_packet(panelState.bytes, sizeof(panelState.bytes));
-            	  gpio_toggle(GPIOC, GPIO13);
-              }
-              usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
-              usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
-            }
-            lastButtonsUpdateMs = millis();
+
+        	if(millis() - lastButtonsUpdateMs >= buttonUpdateIntervalMs){
+        		usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
+        		usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
+        		lastButtonsUpdateMs = millis();
+        	}
         }
     }
 }
