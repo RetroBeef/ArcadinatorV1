@@ -26,7 +26,18 @@
     <div id="gamepad-container"></div>
 
     <script>
-        let audio = new Audio('sound.wav');
+        let audioA = new Audio('A.wav');
+        let audioB = new Audio('B.wav');
+        let audioC = new Audio('C.wav');
+        let audioD = new Audio('D.wav');
+        let audioE = new Audio('E.wav');
+        let audioF = new Audio('F.wav');
+        let audioCoin = new Audio('Coin.wav');
+        let audioStart = new Audio('Start.wav');
+        let audioJoystickUp = new Audio('Joystick.wav');
+        let audioJoystickDown = new Audio('Joystick.wav');
+        let audioJoystickLeft = new Audio('Joystick.wav');
+        let audioJoystickRight = new Audio('Joystick.wav');
         // Function to update the SVG paths based on gamepad input
         function updateGamepadState(gamepad) {
             // Access the SVG element
@@ -48,20 +59,17 @@
                 const buttonRight = svgElement.getElementById('Right');
 
                 const buttons = [buttonA, buttonB, buttonC, buttonD, buttonE, buttonF, buttonCoin, buttonStart, buttonUp, buttonDown, buttonLeft, buttonRight];
+                const sounds = [audioA, audioB, audioC, audioD, audioE, audioF, audioCoin, audioStart, audioJoystickUp, audioJoystickDown, audioJoystickLeft, audioJoystickRight];
 
-                let atLeastOneButtonPressed = false;
                 for(let i = 0; i < Math.min(buttons.length,gamepad.buttons.length); ++i){
                     if (gamepad.buttons[i].pressed){
-                        atLeastOneButtonPressed = true;
                         buttons[i].setAttribute('class', 'svg-shadow');
-                        audio.play();
+                        sounds[i].play();
                     }else{
                         buttons[i].setAttribute('class', '');
+                        sounds[i].pause();
+                        sounds[i].currentTime = 0;
                     }
-                }
-                if(!atLeastOneButtonPressed){   
-                    audio.pause();
-                    audio.currentTime = 0;
                 }
             } else {
                 console.log('SVG element not available.');
