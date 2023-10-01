@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamepad Visualization</title>
+    <style>
+                .svg-shadow {
+                  animation: svg-shadow 1.5s ease-in-out infinite alternate;
+                }
+
+                @keyframes svg-shadow {
+                  from {
+                    filter: drop-shadow( 0 0 5px #fff) drop-shadow( 0 0 15px #7abefd) drop-shadow( 0 0 20px #7abefd);
+                  }
+
+                  to {
+                    
+                    filter: drop-shadow( 0 0 20px #fff) drop-shadow( 0 0 25px #7abefd) drop-shadow( 0 0 40px #7abefd);
+                  }
+                }
+    </style>
+</head>
+<body>
+    <!-- Create a container for the SVG -->
+    <div id="gamepad-container"></div>
+
+    <script>
+        let audio = new Audio('sound.wav');
+        // Function to update the SVG paths based on gamepad input
+        function updateGamepadState(gamepad) {
+            // Access the SVG element
+            const svgElement = document.getElementById('svg2');
+
+            // Check if the SVG element is available
+            if (svgElement) {
+                // Update the paths based on gamepad button state
+                const buttonA = svgElement.getElementById('A');
+                
+                // Example: Set stroke color and width based on button state
+                if (gamepad.buttons[0].pressed) {
+                    //buttonA.setAttribute('opacity', 0);
+                    buttonA.setAttribute('class', 'svg-shadow');
+                    audio.play();
+                } else {
+                    //buttonA.setAttribute('opacity', 1);
+                    buttonA.setAttribute('class', '');
+                    audio.pause();
+                    audio.currentTime = 0;
+                }
+
+                // You can repeat similar code for other buttons.
+            } else {
+                console.log('SVG element not available.');
+            }
+        }
+
+        // Load the SVG file using XMLHttpRequest
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', 'FightStick.svg', true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                // Create a div element to inject the SVG content
+                const container = document.getElementById('gamepad-container');
+
+                // Check if the container is empty before injecting SVG content
+                if (!container.innerHTML.trim()) {
+                    container.innerHTML = xhr.responseText;
+
+                    // Check for gamepad support
+                    if ('getGamepads' in navigator) {
+                        // Start listening for gamepad events
+                        window.addEventListener('gamepadconnected', (event) => {
+                            console.log(`Gamepad connected at index ${event.gamepad.index}: ${event.gamepad.id}`);
+                            // Call the updateGamepadState function when a gamepad is connected
+                            updateGamepadState(event.gamepad);
+                        });
+
+                        // Listen for gamepad disconnects
+                        window.addEventListener('gamepaddisconnected', (event) => {
+                            console.log(`Gamepad disconnected from index ${event.gamepad.index}`);
+                        });
+
+                        // Regularly poll for gamepad input updates
+                        function pollGamepads() {
+                            const gamepads = navigator.getGamepads();
+                            for (const gamepad of gamepads) {
+                                if (gamepad) {
+                                    // Call the updateGamepadState function for each connected gamepad
+                                    updateGamepadState(gamepad);
+                                }
+                            }
+                            requestAnimationFrame(pollGamepads);
+                        }
+                        pollGamepads();
+                    } else {
+                        console.log('Gamepad API not supported.');
+                    }
+                }
+            }
+        };
+        xhr.send();
+    </script>
+</body>
+</html>
+
