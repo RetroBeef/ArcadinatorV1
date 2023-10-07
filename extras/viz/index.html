@@ -15,13 +15,13 @@
                   }
 
                   to {
-                    
                     filter: drop-shadow( 0 0 20px #fff) drop-shadow( 0 0 25px #7abefd) drop-shadow( 0 0 40px #7abefd);
                   }
                 }
     </style>
 </head>
 <body>
+    <input type="button" id="start_button" value="start"/>
     <!-- Create a container for the SVG -->
     <div id="gamepad-container"></div>
 
@@ -38,6 +38,7 @@
         let audioJoystickDown = new Audio('Joystick.wav');
         let audioJoystickLeft = new Audio('Joystick.wav');
         let audioJoystickRight = new Audio('Joystick.wav');
+        let pressed = [0,0,0,0,0,0,0,0,0,0,0,0];
         // Function to update the SVG paths based on gamepad input
         function updateGamepadState(gamepad) {
             // Access the SVG element
@@ -58,17 +59,25 @@
                 const buttonLeft = svgElement.getElementById('Left');
                 const buttonRight = svgElement.getElementById('Right');
 
-                const buttons = [buttonA, buttonB, buttonC, buttonD, buttonE, buttonF, buttonCoin, buttonStart, buttonUp, buttonDown, buttonLeft, buttonRight];
-                const sounds = [audioA, audioB, audioC, audioD, audioE, audioF, audioCoin, audioStart, audioJoystickUp, audioJoystickDown, audioJoystickLeft, audioJoystickRight];
+                const buttons = [buttonUp, buttonDown, buttonLeft, buttonRight, buttonA, buttonB, buttonC, buttonD, buttonE, buttonF, buttonStart, buttonCoin];
+                const sounds = [audioJoystickUp, audioJoystickDown, audioJoystickLeft, audioJoystickRight, audioA, audioB, audioC, audioD, audioE, audioF, audioStart, audioCoin];
 
                 for(let i = 0; i < Math.min(buttons.length,gamepad.buttons.length); ++i){
                     if (gamepad.buttons[i].pressed){
-                        buttons[i].setAttribute('class', 'svg-shadow');
-                        sounds[i].play();
+                        if(!pressed[i]){
+                            pressed[i] = new Date().getMilliseconds();
+                            buttons[i].setAttribute('class', 'svg-shadow');
+                            sounds[i].play();
+                        }else{
+                            pressed[i] = new Date().getMilliseconds();
+                        }
                     }else{
-                        buttons[i].setAttribute('class', '');
-                        sounds[i].pause();
-                        sounds[i].currentTime = 0;
+                        if(pressed[i] && (new Date().getMilliseconds()) - pressed[i]>10){
+                            buttons[i].setAttribute('class', '');
+                            pressed[i] = 0;
+                            sounds[i].pause();
+                            sounds[i].currentTime = 0;
+                        }
                     }
                 }
             } else {
@@ -120,7 +129,11 @@
                 }
             }
         };
+    let startButton = document.getElementById("start_button");
+    startButton.addEventListener("click", function(){
         xhr.send();
+        startButton.style="display:none";
+    });
     </script>
 </body>
 </html>
