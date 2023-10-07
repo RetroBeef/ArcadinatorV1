@@ -132,6 +132,7 @@ static void button_setup_input(button_t button){
 }
 
 void buttons_setup(void){
+	gpio_primary_remap(AFIO_MAPR_SWJ_CFG_JTAG_OFF_SW_ON, 0);
     button_setup_input(B01);
     button_setup_input(B02);
     button_setup_input(B03);
