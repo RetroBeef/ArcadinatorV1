@@ -18,26 +18,63 @@
                     filter: drop-shadow( 0 0 20px #fff) drop-shadow( 0 0 25px #7abefd) drop-shadow( 0 0 40px #7abefd);
                   }
                 }
+                html, body {
+                  width: 100%;
+                  height:100%;
+                }
+
+                body {
+                    background: linear-gradient(-45deg, #dd00fe, #152BA7, #000000, #6a329f);
+                    background-size: 400% 400%;
+                    animation: gradient 15s ease infinite;
+                }
+
+                @keyframes gradient {
+                    0% {
+                        background-position: 0% 50%;
+                    }
+                    50% {
+                        background-position: 100% 50%;
+                    }
+                    100% {
+                        background-position: 0% 50%;
+                    }
+                }
     </style>
 </head>
-<body>
+    <center>
     <input type="button" id="start_button" value="start"/>
     <!-- Create a container for the SVG -->
     <div id="gamepad-container"></div>
-
+    </center>
     <script>
-        let audioA = new Audio('A.wav');
-        let audioB = new Audio('B.wav');
-        let audioC = new Audio('C.wav');
-        let audioD = new Audio('D.wav');
-        let audioE = new Audio('E.wav');
-        let audioF = new Audio('F.wav');
-        let audioCoin = new Audio('Coin.wav');
-        let audioStart = new Audio('Start.wav');
-        let audioJoystickUp = new Audio('Joystick.wav');
-        let audioJoystickDown = new Audio('Joystick.wav');
-        let audioJoystickLeft = new Audio('Joystick.wav');
-        let audioJoystickRight = new Audio('Joystick.wav');
+        'use strict';let zzfx,zzfxV,zzfxX
+        zzfxV=.3
+        zzfx=
+        (p=1,k=.05,b=220,e=0,r=0,t=.1,q=0,D=1,u=0,y=0,v=0,z=0,l=0,E=0,A=0,F=0,c=0,w=1,m=
+        0,B=0,M=Math,R=44100,d=2*M.PI,G=u*=500*d/R/R,C=b*=(1-k+2*k*M.random(k=[]))*d/R,g
+        =0,H=0,a=0,n=1,I=0,J=0,f=0,x,h)=>{e=R*e+9;m*=R;r*=R;t*=R;c*=R;y*=500*d/R**3;A*=d
+        /R;v*=d/R;z*=R;l=R*l|0;for(h=e+m+r+t+c|0;a<h;k[a++]=f)++J%(100*F|0)||(f=q?1<q?2<
+        q?3<q?M.sin((g%d)**3):M.max(M.min(M.tan(g),1),-1):1-(2*g/d%2+2)%2:1-4*M.abs(M.
+        round(g/d)-g/d):M.sin(g),f=(l?1-B+B*M.sin(d*a/l):1)*(0<f?1:-1)*M.abs(f)**D*zzfxV
+        *p*(a<e?a/e:a<e+m?1-(a-e)/m*(1-w):a<e+m+r?w:a<h-c?(h-a-c)/t*w:0),f=c?f/2+(c>a?0:
+        (a<h-c?1:(h-a)/c)*k[a-c|0]/2):f),x=(b+=u+=y)*M.cos(A*H++),g+=x-x*E*(1-1E9*(M.sin
+        (a)+1)%2),n&&++n>z&&(b+=v,C+=v,n=0),!l||++I%l||(b=C,u=G,n=n||1);p=zzfxX.
+        createBuffer(1,h,R);p.getChannelData(0).set(k);b=zzfxX.createBufferSource();b.
+        buffer=p;b.connect(zzfxX.destination);b.start();return b};zzfxX=new AudioContext;
+        let audioA = [,,200,.02,.02,.07,,.89,22,-4.2,,,,,,,,.66,.08];
+        let audioB = [,,300,.02,.02,.07,,.89,22,-4.2,,,,,,,,.66,.08];
+        let audioC = [,,400,.02,.02,.07,,.89,22,-4.2,,,,,,,,.66,.08];
+        let audioD = [,,500,.02,.02,.07,,.89,22,-4.2,,,,,,,,.66,.08];
+        let audioE = [,,600.3,.02,.02,.07,,.89,22,-4.2,,,,,,,,.66,.08];
+        let audioF = [,,700,.02,.02,.07,,.89,22,-4.2,,,,,,,,.66,.08];
+        let audioCoin = [1.02,,1529,.01,.07,.16,1,.65,,,-352,.02,.06,,,,,.47,.03,.07];
+        let audioStart = [,,493,.07,.27,.37,1,.63,.2,,,.04,.19,,,.1,,.89,.15];
+        let audioJoystickUp = [2.12,0,65.40639,,.93,.11,1,1.03,,,,,.15,.4,,,.12,.31,.09,.01];
+        let audioJoystickDown = [2.12,0,73.41619,,.93,.11,1,1.03,,,,,.15,.4,,,.12,.31,.09,.01];
+        let audioJoystickLeft = [2.12,0,82.40689,,.93,.11,1,1.03,,,,,.15,.4,,,.12,.31,.09,.01];
+        let audioJoystickRight = [2.12,0,87.30706,,.93,.11,1,1.03,,,,,.15,.4,,,.12,.31,.09,.01];
+        const sounds = [audioJoystickUp, audioJoystickDown, audioJoystickLeft, audioJoystickRight, audioA, audioB, audioC, audioD, audioE, audioF, audioStart, audioCoin];
         let pressed = [0,0,0,0,0,0,0,0,0,0,0,0];
         // Function to update the SVG paths based on gamepad input
         function updateGamepadState(gamepad) {
@@ -46,6 +83,7 @@
 
             // Check if the SVG element is available
             if (svgElement) {
+                const background = svgElement.getElementById('Background');
                 const buttonA = svgElement.getElementById('A');
                 const buttonB = svgElement.getElementById('B');
                 const buttonC = svgElement.getElementById('C');
@@ -60,14 +98,13 @@
                 const buttonRight = svgElement.getElementById('Right');
 
                 const buttons = [buttonUp, buttonDown, buttonLeft, buttonRight, buttonA, buttonB, buttonC, buttonD, buttonE, buttonF, buttonStart, buttonCoin];
-                const sounds = [audioJoystickUp, audioJoystickDown, audioJoystickLeft, audioJoystickRight, audioA, audioB, audioC, audioD, audioE, audioF, audioStart, audioCoin];
 
                 for(let i = 0; i < Math.min(buttons.length,gamepad.buttons.length); ++i){
                     if (gamepad.buttons[i].pressed){
                         if(!pressed[i]){
                             pressed[i] = new Date().getMilliseconds();
                             buttons[i].setAttribute('class', 'svg-shadow');
-                            sounds[i].play();
+                            zzfx(...sounds[i]);
                         }else{
                             pressed[i] = new Date().getMilliseconds();
                         }
@@ -75,8 +112,6 @@
                         if(pressed[i] && (new Date().getMilliseconds()) - pressed[i]>10){
                             buttons[i].setAttribute('class', '');
                             pressed[i] = 0;
-                            sounds[i].pause();
-                            sounds[i].currentTime = 0;
                         }
                     }
                 }
