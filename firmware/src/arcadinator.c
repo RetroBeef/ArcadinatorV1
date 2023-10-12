@@ -32,8 +32,6 @@ PanelData_t panelState = {0};
 static usbd_device *usbd_dev;
 
 static uint8_t doButtonUpdates = 0;
-static uint32_t lastButtonsUpdateMs = 0;
-const uint32_t buttonUpdateIntervalMs = 1;
 
 const struct usb_device_descriptor dev_descr = {
 	.bLength = USB_DT_DEVICE_SIZE,
@@ -61,10 +59,10 @@ static const uint8_t hid_report_descriptor[] = {
     0x35, 0x00,         // Physical Minimum (0)
     0x45, 0x01,         // Physical Maximum (1)
     0x75, 0x01,         // Report Size (1)
-    0x95, 0x0C,         // Report Count (12)
+    0x95, 0x10,         // Report Count (16)
     0x05, 0x09,         // Usage Page (Button)
     0x19, 0x01,         // Usage Minimum (Button 1)
-    0x29, 0x0C,         // Usage Maximum (Button 12)
+    0x29, 0x10,         // Usage Maximum (Button 16)
     0x81, 0x02,         // Input (Data, Variable, Absolute)
 
     0xC0                // End Collection
@@ -96,7 +94,7 @@ const struct usb_endpoint_descriptor hid_endpoint_player1 = {
 	.bEndpointAddress = 0x81,
 	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
 	.wMaxPacketSize = sizeof(panelState.obj.player1.bytes),
-	.bInterval = 10,
+	.bInterval = 1
 };
 
 const struct usb_endpoint_descriptor hid_endpoint_player2 = {
@@ -105,7 +103,7 @@ const struct usb_endpoint_descriptor hid_endpoint_player2 = {
 	.bEndpointAddress = 0x82,
 	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
 	.wMaxPacketSize = sizeof(panelState.obj.player2.bytes),
-	.bInterval = 10,
+	.bInterval = 1
 };
 
 const struct usb_interface_descriptor hid_iface_player1 = {
@@ -249,6 +247,7 @@ static void clocks_setup(void){
 
     systick_setup();
 
+    rcc_periph_clock_enable(RCC_AFIO);
     rcc_periph_clock_enable(RCC_GPIOA);
     rcc_periph_clock_enable(RCC_GPIOB);
     rcc_periph_clock_enable(RCC_GPIOC);
@@ -295,19 +294,15 @@ int main(void){
         } else if(xMode == RX_MODE || xMode == USB_MODE) {
         	if(xMode == RX_MODE){
         		if(!IRQ){
+        			gpio_clear(GPIOC, GPIO13);
         			nrf24_rx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
         			memcpy(panelState.bytes, nrfBuf, sizeof(panelState.bytes));
-            		gpio_clear(GPIOC, GPIO13);
+        			usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
+        			usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
             	}else{
             		gpio_set(GPIOC, GPIO13);
             	}
             }
-
-        	if(millis() - lastButtonsUpdateMs >= buttonUpdateIntervalMs){
-        		usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
-        		usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
-        		lastButtonsUpdateMs = millis();
-        	}
         }
     }
 }

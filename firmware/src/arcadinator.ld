@@ -7,8 +7,7 @@ MEMORY
  rom (rx) : ORIGIN = 0x08000000, LENGTH = 64K
  
 /* bluepill with usbc and STM32F103C6T6A */
-/*
- ram (rwx) : ORIGIN = 0x20000000, LENGTH = 10K
+/* ram (rwx) : ORIGIN = 0x20000000, LENGTH = 10K
  rom (rx) : ORIGIN = 0x08000000, LENGTH = 32K
 */
 }
