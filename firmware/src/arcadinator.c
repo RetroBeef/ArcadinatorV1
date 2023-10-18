@@ -297,12 +297,12 @@ int main(void){
         			gpio_clear(GPIOC, GPIO13);
         			nrf24_rx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
         			memcpy(panelState.bytes, nrfBuf, sizeof(panelState.bytes));
-        			usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
-        			usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
             	}else{
             		gpio_set(GPIOC, GPIO13);
             	}
             }
+			usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
+			usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
         }
     }
 }
