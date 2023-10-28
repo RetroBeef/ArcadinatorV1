@@ -356,15 +356,20 @@ int main(void){
             	}else{
             		gpio_set(GPIOC, GPIO13);
             	}
-            }
-        	while(!usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes))){
-        		__asm("nop");//timeout?
-        	}
-			if(panelType==DUAL_PANEL){
-				while(!usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes))){
+            	usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
+    			if(panelType==DUAL_PANEL){
+    				usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
+    			}
+            }else{
+				while(!usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes))){
 					__asm("nop");//timeout?
 				}
-			}
+				if(panelType==DUAL_PANEL){
+					while(!usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes))){
+						__asm("nop");//timeout?
+					}
+				}
+            }
         }
     }
 }
