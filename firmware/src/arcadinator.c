@@ -25,7 +25,8 @@ typedef enum{
 	USB_MODE = 2
 } xMode_t;
 
-uint8_t xMode = USB_MODE;
+xMode_t xMode = RX_MODE;
+panelType_t panelType = DUAL_PANEL;
 
 PanelData_t panelState = {0};
 
@@ -140,7 +141,12 @@ const struct usb_interface_descriptor hid_iface_player2 = {
 	.extralen = sizeof(hid_function),
 };
 
-const struct usb_interface ifaces[] = {{
+const struct usb_interface ifaces_single[] = {{
+	.num_altsetting = 1,
+	.altsetting = &hid_iface_player1,
+}};
+
+const struct usb_interface ifaces_dual[] = {{
 	.num_altsetting = 1,
 	.altsetting = &hid_iface_player1,
 }, {
@@ -148,7 +154,20 @@ const struct usb_interface ifaces[] = {{
 	.altsetting = &hid_iface_player2,
 }};
 
-const struct usb_config_descriptor config = {
+const struct usb_config_descriptor config_single = {
+	.bLength = USB_DT_CONFIGURATION_SIZE,
+	.bDescriptorType = USB_DT_CONFIGURATION,
+	.wTotalLength = 0,
+	.bNumInterfaces = 1,
+	.bConfigurationValue = 1,
+	.iConfiguration = 0,
+	.bmAttributes = 0x80,
+	.bMaxPower = 0x32,
+
+	.interface = ifaces_single,
+};
+
+const struct usb_config_descriptor config_dual = {
 	.bLength = USB_DT_CONFIGURATION_SIZE,
 	.bDescriptorType = USB_DT_CONFIGURATION,
 	.wTotalLength = 0,
@@ -158,16 +177,34 @@ const struct usb_config_descriptor config = {
 	.bmAttributes = 0x80,
 	.bMaxPower = 0x32,
 
-	.interface = ifaces,
+	.interface = ifaces_dual,
 };
 
-static const char *usb_strings[] = {
+static const char *usb_strings_single[] = {
+	"RetroBeef",
+	"Arcadinator FS",
+	"V1"
+};
+
+static const char *usb_strings_dual[] = {
 	"RetroBeef",
 	"Arcadinator Dual",
 	"V1"
 };
 
-uint8_t usbd_control_buffer[128];
+static const char *usb_strings_single_rf[] = {
+	"RetroBeef",
+	"Arcadinator FS Wireless",
+	"V1"
+};
+
+static const char *usb_strings_dual_rf[] = {
+	"RetroBeef",
+	"Arcadinator Dual Wireless",
+	"V1"
+};
+
+uint8_t usbd_control_buffer[256];
 
 static enum usbd_request_return_codes hid_control_request(usbd_device *dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len, void (**complete)(usbd_device *, struct usb_setup_data *)){
 	(void)complete;
@@ -189,8 +226,9 @@ static void hid_set_config(usbd_device *dev, uint16_t wValue){
 	(void)dev;
 
 	usbd_ep_setup(dev, 0x81, USB_ENDPOINT_ATTR_INTERRUPT, sizeof(panelState.obj.player1.bytes), NULL);
-    usbd_ep_setup(dev, 0x82, USB_ENDPOINT_ATTR_INTERRUPT, sizeof(panelState.obj.player2.bytes), NULL);
-
+	if(panelType == DUAL_PANEL){
+		usbd_ep_setup(dev, 0x82, USB_ENDPOINT_ATTR_INTERRUPT, sizeof(panelState.obj.player2.bytes), NULL);
+	}
     usbd_register_control_callback(dev, USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE, USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT, hid_control_request);
 
     doButtonUpdates = 1;
@@ -210,18 +248,20 @@ static void buttons_update(void){
     panelState.obj.player1.obj.buttonStart = !digitalRead(B11);
     panelState.obj.player1.obj.buttonExtra = !digitalRead(B12);
 
-    panelState.obj.player2.obj.joyUp = !digitalRead(B13);
-    panelState.obj.player2.obj.joyDown = !digitalRead(B14);
-    panelState.obj.player2.obj.joyLeft = !digitalRead(B15);
-    panelState.obj.player2.obj.joyRight = !digitalRead(B16);
-    panelState.obj.player2.obj.button01 = !digitalRead(B17);
-    panelState.obj.player2.obj.button02 = !digitalRead(B18);
-    panelState.obj.player2.obj.button03 = !digitalRead(B19);
-    panelState.obj.player2.obj.button04 = !digitalRead(B20);
-    panelState.obj.player2.obj.button05 = !digitalRead(B21);
-    panelState.obj.player2.obj.button06 = !digitalRead(B22);
-    panelState.obj.player2.obj.buttonStart = !digitalRead(B23);
-    panelState.obj.player2.obj.buttonExtra = !digitalRead(B24);
+	if(panelType == DUAL_PANEL){
+		panelState.obj.player2.obj.joyUp = !digitalRead(B13);
+		panelState.obj.player2.obj.joyDown = !digitalRead(B14);
+		panelState.obj.player2.obj.joyLeft = !digitalRead(B15);
+		panelState.obj.player2.obj.joyRight = !digitalRead(B16);
+		panelState.obj.player2.obj.button01 = !digitalRead(B17);
+		panelState.obj.player2.obj.button02 = !digitalRead(B18);
+		panelState.obj.player2.obj.button03 = !digitalRead(B19);
+		panelState.obj.player2.obj.button04 = !digitalRead(B20);
+		panelState.obj.player2.obj.button05 = !digitalRead(B21);
+		panelState.obj.player2.obj.button06 = !digitalRead(B22);
+		panelState.obj.player2.obj.buttonStart = !digitalRead(B23);
+		panelState.obj.player2.obj.buttonExtra = !digitalRead(B24);
+	}
 }
 
 void usb_lp_can_rx0_isr(){
@@ -235,7 +275,19 @@ static void usb_setup(void) {
 		__asm__("nop");
 	}
 
-	usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+	if(panelType == DUAL_PANEL){
+		if(xMode == USB_MODE){
+			usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config_dual, usb_strings_dual, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+		}else{
+			usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config_dual, usb_strings_dual_rf, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+		}
+	}else{
+		if(xMode == USB_MODE){
+			usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config_single, usb_strings_single, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+		}else{
+			usbd_dev = usbd_init(&st_usbfs_v1_usb_driver, &dev_descr, &config_single, usb_strings_single_rf, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+		}
+	}
 	usbd_register_set_config_callback(usbd_dev, hid_set_config);
 
     nvic_set_priority(NVIC_USB_LP_CAN_RX0_IRQ, 2 << 6);
@@ -289,7 +341,11 @@ int main(void){
         }
 
         if(xMode == TX_MODE) {
-            memcpy(nrfBuf, panelState.bytes, sizeof(panelState.bytes));
+        	if(panelType==DUAL_PANEL){
+        		memcpy(nrfBuf, panelState.bytes, sizeof(panelState.bytes));
+        	}else{
+        		memcpy(nrfBuf, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
+        	}
             nrf24_tx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
         } else if(xMode == RX_MODE || xMode == USB_MODE) {
         	if(xMode == RX_MODE){
@@ -302,7 +358,7 @@ int main(void){
             	}
             }
 			usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
-			usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
+			if(panelType==DUAL_PANEL)usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
         }
     }
 }

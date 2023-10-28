@@ -4,6 +4,11 @@ extern "C" {
 #endif
 #include <stdint.h>
 
+typedef enum{
+    SINGLE_PANEL = 0,
+	DUAL_PANEL = 1
+} panelType_t;
+
 #pragma pack(push,1)
 typedef struct{
   uint8_t joyUp : 1;
