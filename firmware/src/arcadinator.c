@@ -235,7 +235,7 @@ static void hid_set_config(usbd_device *dev, uint16_t wValue){
 }
 
 static void buttons_update(void){
-    //panelState.obj.player1.obj.joyUp = !digitalRead(B01);//debug
+    panelState.obj.player1.obj.joyUp = !digitalRead(B01);
     panelState.obj.player1.obj.joyDown = !digitalRead(B02);
     panelState.obj.player1.obj.joyLeft = !digitalRead(B03);
     panelState.obj.player1.obj.joyRight = !digitalRead(B04);
