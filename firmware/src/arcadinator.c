@@ -25,7 +25,7 @@ typedef enum{
 	USB_MODE = 2
 } xMode_t;
 
-xMode_t xMode = RX_MODE;
+xMode_t xMode = USB_MODE;
 panelType_t panelType = DUAL_PANEL;
 
 PanelData_t panelState = {0};
@@ -204,7 +204,7 @@ static const char *usb_strings_dual_rf[] = {
 	"V1"
 };
 
-uint8_t usbd_control_buffer[256];
+uint8_t usbd_control_buffer[128];
 
 static enum usbd_request_return_codes hid_control_request(usbd_device *dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len, void (**complete)(usbd_device *, struct usb_setup_data *)){
 	(void)complete;
@@ -235,7 +235,7 @@ static void hid_set_config(usbd_device *dev, uint16_t wValue){
 }
 
 static void buttons_update(void){
-    panelState.obj.player1.obj.joyUp = !digitalRead(B01);
+    //panelState.obj.player1.obj.joyUp = !digitalRead(B01);//debug
     panelState.obj.player1.obj.joyDown = !digitalRead(B02);
     panelState.obj.player1.obj.joyLeft = !digitalRead(B03);
     panelState.obj.player1.obj.joyRight = !digitalRead(B04);
@@ -357,8 +357,14 @@ int main(void){
             		gpio_set(GPIOC, GPIO13);
             	}
             }
-			usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes));
-			if(panelType==DUAL_PANEL)usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes));
+        	while(!usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes))){
+        		__asm("nop");//timeout?
+        	}
+			if(panelType==DUAL_PANEL){
+				while(!usbd_ep_write_packet(usbd_dev, 0x82, panelState.obj.player2.bytes, sizeof(panelState.obj.player2.bytes))){
+					__asm("nop");//timeout?
+				}
+			}
         }
     }
 }
