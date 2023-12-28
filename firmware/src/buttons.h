@@ -39,6 +39,7 @@ extern button_t B22;
 extern button_t B23;
 extern button_t B24;
 
+void digitalWrite(button_t pin, uint8_t high);
 #ifdef __cplusplus
 }
 #endif

@@ -8,6 +8,7 @@
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/usb/usbd.h>
 #include <libopencm3/usb/hid.h>
+#include <libopencm3/stm32/exti.h>
 
 #include "systick.h"
 #include "nrf24l01.h"
@@ -15,6 +16,68 @@
 #include "panel.h"
 
 //#define NX_MODE
+#define SNES_MODE
+
+#if defined(SNES_MODE)
+uint8_t bitCounter = 0;
+typedef enum{
+	SNES_B = 0,
+	SNES_Y = 1,
+	SNES_SELECT = 2,
+	SNES_START = 3,
+	SNES_UP = 4,
+	SNES_DOWN = 5,
+	SNES_LEFT = 6,
+	SNES_RIGHT = 7,
+	SNES_A = 8,
+	SNES_X = 9,
+	SNES_L = 10,
+	SNES_R = 11,
+	SNES_RESERVED = 12,
+	SNES_RESERVED2 = 13,
+	SNES_RESERVED3 = 14,
+	SNES_END = 15
+} SNES_Button_e;
+
+#pragma pack(push,1)
+typedef struct{
+	uint8_t b : 1;
+	uint8_t y : 1;
+	uint8_t select : 1;
+	uint8_t start : 1;
+	uint8_t up : 1;
+	uint8_t down : 1;
+	uint8_t left : 1;
+	uint8_t right : 1;
+	uint8_t a : 1;
+	uint8_t x : 1;
+	uint8_t l : 1;
+	uint8_t r : 1;
+	uint8_t rsvd1 : 1;
+	uint8_t rsvd2 : 1;
+	uint8_t rsvd3 : 1;
+	uint8_t rsvd4 : 1;
+} PlayerDataSNES_s;
+
+typedef union{
+	PlayerDataSNES_s obj;
+  uint8_t bytes[sizeof(PlayerDataSNES_s)];
+  uint16_t word;
+} PlayerDataSNES_t;
+
+
+typedef struct{
+  PlayerDataSNES_t player1;
+  PlayerDataSNES_t player2;
+} PanelDataSNES_s;
+
+typedef union{
+  PanelDataSNES_s obj;
+  uint8_t bytes[sizeof(PanelDataSNES_s)];
+} PanelDataSNES_t;
+
+#pragma pack(pop)
+#endif
 
 typedef enum{
     RX_MODE = 0,
@@ -22,8 +85,8 @@ typedef enum{
 	USB_MODE = 2
 } xMode_t;
 
-xMode_t xMode = USB_MODE;
-panelType_t panelType = DUAL_PANEL;
+xMode_t xMode = RX_MODE;
+panelType_t panelType = SINGLE_PANEL;
 
 uint8_t rxAddress[NRF24L01_ADDR_WIDTH] = {0x11,0x22,0x33,0x44,0x55};//todo
 uint8_t txAddress[NRF24L01_ADDR_WIDTH] = {0x11,0x22,0x33,0x44,0x55};
@@ -31,6 +94,7 @@ uint8_t nrfBuf[NRF24L01_PLOAD_WIDTH] = {0};
 
 PanelData_t panelState = {0};
 PanelDataNX_t panelStateNx = {0};
+PanelDataSNES_t panelStateSnes = {0};
 
 static usbd_device *usbd_dev;
 
@@ -397,6 +461,21 @@ static void translateToNx(void){
 		panelStateNx.obj.player2.obj.ry = 127;
     }
 }
+#elif defined(SNES_MODE)
+static void translateToSNES(void){
+    panelStateSnes.obj.player1.obj.up = panelState.obj.player1.obj.joyUp;
+    panelStateSnes.obj.player1.obj.down = panelState.obj.player1.obj.joyDown;
+    panelStateSnes.obj.player1.obj.left = panelState.obj.player1.obj.joyLeft;
+    panelStateSnes.obj.player1.obj.right = panelState.obj.player1.obj.joyRight;
+    panelStateSnes.obj.player1.obj.a = panelState.obj.player1.obj.button01;
+    panelStateSnes.obj.player1.obj.b = panelState.obj.player1.obj.button02;
+    panelStateSnes.obj.player1.obj.y = panelState.obj.player1.obj.button03;
+    panelStateSnes.obj.player1.obj.x = panelState.obj.player1.obj.button04;
+    panelStateSnes.obj.player1.obj.l = panelState.obj.player1.obj.button05;
+    panelStateSnes.obj.player1.obj.r = panelState.obj.player1.obj.button06;
+    panelStateSnes.obj.player1.obj.start = panelState.obj.player1.obj.buttonStart;
+    panelStateSnes.obj.player1.obj.select = panelState.obj.player1.obj.buttonExtra;
+}
 #endif
 
 void usb_lp_can_rx0_isr(){
@@ -440,16 +519,112 @@ static void clocks_setup(void){
     rcc_periph_clock_enable(RCC_GPIOC);
 }
 
+
+static void writeSnesBit(SNES_Button_e bit){
+	switch(bit){
+		case SNES_B:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.b);
+		}break;
+		case SNES_Y:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.y);
+		}break;
+		case SNES_SELECT:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.select);
+		}break;
+		case SNES_START:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.start);
+		}break;
+		case SNES_UP:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.up);
+		}break;
+		case SNES_DOWN:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.down);
+		}break;
+		case SNES_LEFT:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.left);
+		}break;
+		case SNES_RIGHT:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.right);
+		}break;
+		case SNES_A:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.a);
+		}break;
+		case SNES_X:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.x);
+		}break;
+		case SNES_L:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.l);
+		}break;
+		case SNES_R:{
+			digitalWrite(B02, !panelStateSnes.obj.player1.obj.r);
+		}break;
+
+		case SNES_RESERVED:
+		case SNES_RESERVED2:
+		case SNES_RESERVED3:
+		case SNES_END:{
+			digitalWrite(B02, 1);
+		}break;
+	}
+}
+
+void exti15_10_isr(void){
+	if(exti_get_flag_status(EXTI14)){//latch detected
+		bitCounter = 0;
+		writeSnesBit(bitCounter);
+
+		exti_reset_request(EXTI14);
+	}
+	if(exti_get_flag_status(EXTI15)){
+		  bitCounter++;
+		  writeSnesBit(bitCounter);
+
+		  if (bitCounter == SNES_END) {
+		    bitCounter = 0;
+		    gpio_clear(GPIOB, GPIO13);
+		  }
+		exti_reset_request(EXTI15);
+	}
+}
+
+void exti0_isr(void){
+	if(exti_get_flag_status(EXTI0)){
+		gpio_clear(GPIOC, GPIO13);
+		nrf24_rx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
+		memcpy(panelState.bytes, nrfBuf, sizeof(panelState.bytes));
+		exti_reset_request(EXTI0);
+	}
+}
+
 int main(void){
     clocks_setup();
-
+#if !defined(SNES_MODE)
     if(xMode == RX_MODE || xMode == USB_MODE){
     	usb_setup();
     }
-
+#endif
     if(xMode == TX_MODE || xMode == USB_MODE){
     	buttons_setup();
     }
+
+#if defined(SNES_MODE)
+    //B02, data out
+    gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
+    gpio_set(GPIOB, GPIO13);
+
+    nvic_enable_irq(NVIC_EXTI15_10_IRQ);
+    //B03, clock in
+    gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO14);
+	exti_select_source(EXTI14, GPIOB);
+	exti_set_trigger(EXTI14, EXTI_TRIGGER_RISING);
+	exti_enable_request(EXTI14);
+    //B04, latch in
+    gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, GPIO15);
+    gpio_set(GPIOB, GPIO15);
+	exti_select_source(EXTI15, GPIOB);
+	exti_set_trigger(EXTI15, EXTI_TRIGGER_FALLING);
+	exti_enable_request(EXTI15);
+#endif
 
     if(xMode == RX_MODE || xMode == TX_MODE){
     	nrf24_init();
@@ -467,10 +642,11 @@ int main(void){
     }
 
 	while (1){
+#if !defined(SNES_MODE)
         if(xMode == RX_MODE || xMode == USB_MODE){
         	if(!doButtonUpdates)continue;
         }
-
+#endif
         if(xMode == TX_MODE || xMode == USB_MODE){
         	buttons_update();
         }
@@ -484,14 +660,12 @@ int main(void){
             nrf24_tx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
         } else if(xMode == RX_MODE || xMode == USB_MODE) {
         	if(xMode == RX_MODE){
-        		if(!IRQ){
-        			gpio_clear(GPIOC, GPIO13);
-        			nrf24_rx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
-        			memcpy(panelState.bytes, nrfBuf, sizeof(panelState.bytes));
-            	}else{
+        		if(IRQ){
             		gpio_set(GPIOC, GPIO13);
             	}
-#if defined(NX_MODE)
+#if defined(SNES_MODE)
+        		translateToSNES();
+#elif defined(NX_MODE)
         		translateToNx();
             	usbd_ep_write_packet(usbd_dev, 0x81, panelStateNx.obj.player1.bytes, sizeof(panelStateNx.obj.player1.bytes));
     			if(panelType==DUAL_PANEL){
@@ -514,7 +688,7 @@ int main(void){
 						__asm("nop");//timeout?
 					}
 				}
-#else
+#elif !defined(SNES_MODE)
 				while(!usbd_ep_write_packet(usbd_dev, 0x81, panelState.obj.player1.bytes, sizeof(panelState.obj.player1.bytes))){
 					__asm("nop");//timeout?
 				}

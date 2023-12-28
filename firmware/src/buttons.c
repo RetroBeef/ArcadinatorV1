@@ -159,3 +159,10 @@ void buttons_setup(void){
     button_setup_input(B24);
 }
 
+void digitalWrite(button_t button, uint8_t high){
+	if(high){
+		gpio_set(button.port, button.pin);
+	}else{
+		gpio_clear(button.port, button.pin);
+	}
+}
