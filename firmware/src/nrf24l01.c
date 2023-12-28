@@ -3,6 +3,8 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/spi.h>
+#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/stm32/exti.h>
 
 
 static void nrf24_spi_init(void){
@@ -28,8 +30,12 @@ void nrf24_init(void){
   gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO4);
  
   //IRQ Initialize
+  nvic_enable_irq(NVIC_EXTI0_IRQ);
   gpio_set_mode(GPIOA, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, GPIO0);
   gpio_set(GPIOA, GPIO0);
+  exti_select_source(EXTI0, GPIOA);
+  exti_set_trigger(EXTI0, EXTI_TRIGGER_FALLING);
+  exti_enable_request(EXTI0);
 
   nrf24_spi_init();
   CSN(1);

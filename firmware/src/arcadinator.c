@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <libopencm3/cm3/nvic.h>
+#include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/timer.h>
@@ -440,6 +441,15 @@ static void clocks_setup(void){
     rcc_periph_clock_enable(RCC_GPIOC);
 }
 
+void exti0_isr(void){
+	if(exti_get_flag_status(EXTI0)){
+		gpio_clear(GPIOC, GPIO13);
+		nrf24_rx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
+		memcpy(panelState.bytes, nrfBuf, sizeof(panelState.bytes));
+		exti_reset_request(EXTI0);
+	}
+}
+
 int main(void){
     clocks_setup();
 
@@ -485,10 +495,6 @@ int main(void){
         } else if(xMode == RX_MODE || xMode == USB_MODE) {
         	if(xMode == RX_MODE){
         		if(!IRQ){
-        			gpio_clear(GPIOC, GPIO13);
-        			nrf24_rx_packet(nrfBuf, NRF24L01_PLOAD_WIDTH);
-        			memcpy(panelState.bytes, nrfBuf, sizeof(panelState.bytes));
-            	}else{
             		gpio_set(GPIOC, GPIO13);
             	}
 #if defined(NX_MODE)
